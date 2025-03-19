@@ -1,0 +1,71 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}Поиск друзей{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <h2>Поиск друзей</h2>
+    
+    <form method="get" class="search-form">
+        <div class="search-input-container">
+            <input type="text" name="q" placeholder="Введите имя пользователя или email" value="{{ query }}" class="search-input">
+            <button type="submit" class="button search-button">Найти</button>
+        </div>
+    </form>
+    
+    {% if query %}
+        <div class="search-results">
+            <h3>Результаты поиска по "{{ query }}"</h3>
+            
+            {% if search_results %}
+                <ul class="user-list">
+                    {% for result in search_results %}
+                        <li class="user-item">
+                            <div class="user-info">
+                                <div class="user-avatar">
+                                    {% if result.user.profile.avatar %}
+                                        <img src="{{ result.user.profile.avatar.url }}" alt="{{ result.user.username }}">
+                                    {% else %}
+                                        <img src="/static/chat/default_avatar.png" alt="{{ result.user.username }}">
+                                    {% endif %}
+                                </div>
+                                <div class="user-details">
+                                    <a href="{% url 'view_profile_with_username' result.user.username %}" class="user-name">{{ result.user.username }}</a>
+                                    {% if result.user.first_name or result.user.last_name %}
+                                        <div class="user-fullname">{{ result.user.first_name }} {{ result.user.last_name }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="user-actions">
+                                {% if result.friendship_status == 'accepted' %}
+                                    <a href="{% url 'direct_messages' result.user.id %}" class="button message-button">Написать</a>
+                                    <span class="friend-status">В друзьях</span>
+                                {% elif result.friendship_status == 'incoming' %}
+                                    <span class="pending-status">Запрос получен</span>
+                                {% elif result.friendship_status == 'outgoing' %}
+                                    <span class="pending-status">Запрос отправлен</span>
+                                {% else %}
+                                    <form action="{% url 'send_friend_request' result.user.id %}" method="post" class="inline-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="button add-button">Добавить в друзья</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>По вашему запросу ничего не найдено.</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="search-tip">
+            <p>Введите имя пользователя или email для поиска.</p>
+        </div>
+    {% endif %}
+    
+    <div class="back-link">
+        <a href="{% url 'friends_list' %}">← Назад к списку друзей</a>
+    </div>
+</div>
+{% endblock %}

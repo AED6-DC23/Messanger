@@ -1,0 +1,93 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}Редактирование профиля{% endblock %}
+
+{% block content %}
+<h2>Редактирование профиля</h2>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <h3>Основная информация</h3>
+    
+    <div class="form-group">
+        <label for="id_first_name">{{ user_form.first_name.label }}:</label>
+        {{ user_form.first_name }}
+        {% if user_form.first_name.errors %}
+            <ul class="errorlist">
+                {% for error in user_form.first_name.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <label for="id_last_name">{{ user_form.last_name.label }}:</label>
+        {{ user_form.last_name }}
+        {% if user_form.last_name.errors %}
+            <ul class="errorlist">
+                {% for error in user_form.last_name.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <label for="id_email">{{ user_form.email.label }}:</label>
+        {{ user_form.email }}
+        {% if user_form.email.errors %}
+            <ul class="errorlist">
+                {% for error in user_form.email.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    
+    <h3>Дополнительная информация</h3>
+    
+    <div class="form-group">
+        <label for="id_bio">{{ profile_form.bio.label }}:</label>
+        {{ profile_form.bio }}
+        {% if profile_form.bio.errors %}
+            <ul class="errorlist">
+                {% for error in profile_form.bio.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <label for="id_birth_date">{{ profile_form.birth_date.label }}:</label>
+        {{ profile_form.birth_date }}
+        {% if profile_form.birth_date.errors %}
+            <ul class="errorlist">
+                {% for error in profile_form.birth_date.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <label for="id_avatar">{{ profile_form.avatar.label }}:</label>
+        {% if profile.avatar %}
+            <p>Текущий аватар: <img src="{{ profile.avatar.url }}" alt="Текущий аватар" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;"></p>
+        {% endif %}
+        {{ profile_form.avatar }}
+        {% if profile_form.avatar.errors %}
+            <ul class="errorlist">
+                {% for error in profile_form.avatar.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    
+    <button type="submit" class="button">Сохранить изменения</button>
+    <a href="{% url 'view_profile' %}" class="button button-secondary" style="margin-left: 10px;">Отмена</a>
+</form>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}Друзья{% endblock %}
+
+{% block content %}
+<div class="friends-container">
+    <div class="friends-header">
+        <h2>Ваши друзья</h2>
+        <a href="{% url 'find_friends' %}" class="button button-secondary">Найти друзей</a>
+    </div>
+
+    <div class="friends-section">
+        <h3>Друзья ({{ friends|length }})</h3>
+        {% if friends %}
+            <ul class="friends-list">
+                {% for friend in friends %}
+                    <li class="friend-item">
+                        <div class="friend-info">
+                            <div class="friend-avatar">
+                                {% if friend.profile.avatar %}
+                                    <img src="{{ friend.profile.avatar.url }}" alt="{{ friend.username }}">
+                                {% else %}
+                                    <img src="/static/chat/default_avatar.png" alt="{{ friend.username }}">
+                                {% endif %}
+                            </div>
+                            <div class="friend-details">
+                                <a href="{% url 'view_profile_with_username' friend.username %}" class="friend-name">{{ friend.username }}</a>
+                                {% if friend.first_name or friend.last_name %}
+                                    <div class="friend-fullname">{{ friend.first_name }} {{ friend.last_name }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="friend-actions">
+                            <a href="{% url 'direct_messages' friend.id %}" class="button message-button">Написать</a>
+                            <form action="{% url 'remove_friend' friend.id %}" method="post" class="inline-form" onsubmit="return confirm('Вы действительно хотите удалить этого друга?');">
+                                {% csrf_token %}
+                                <button type="submit" class="button remove-button">Удалить</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>У вас пока нет друзей.</p>
+        {% endif %}
+    </div>
+
+    {% if incoming_requests %}
+        <div class="friends-section">
+            <h3>Входящие запросы ({{ incoming_requests|length }})</h3>
+            <ul class="requests-list">
+                {% for request in incoming_requests %}
+                    <li class="request-item">
+                        <div class="request-info">
+                            <div class="request-avatar">
+                                {% if request.sender.profile.avatar %}
+                                    <img src="{{ request.sender.profile.avatar.url }}" alt="{{ request.sender.username }}">
+                                {% else %}
+                                    <img src="/static/chat/default_avatar.png" alt="{{ request.sender.username }}">
+                                {% endif %}
+                            </div>
+                            <div class="request-details">
+                                <a href="{% url 'view_profile_with_username' request.sender.username %}" class="request-name">{{ request.sender.username }}</a>
+                                <div class="request-date">Запрос от {{ request.created_at|date:"d.m.Y" }}</div>
+                            </div>
+                        </div>
+                        <div class="request-actions">
+                            <form action="{% url 'accept_friend_request' request.id %}" method="post" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="button accept-button">Принять</button>
+                            </form>
+                            <form action="{% url 'reject_friend_request' request.id %}" method="post" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="button reject-button">Отклонить</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if outgoing_requests %}
+        <div class="friends-section">
+            <h3>Исходящие запросы ({{ outgoing_requests|length }})</h3>
+            <ul class="requests-list">
+                {% for request in outgoing_requests %}
+                    <li class="request-item">
+                        <div class="request-info">
+                            <div class="request-avatar">
+                                {% if request.receiver.profile.avatar %}
+                                    <img src="{{ request.receiver.profile.avatar.url }}" alt="{{ request.receiver.username }}">
+                                {% else %}
+                                    <img src="/static/chat/default_avatar.png" alt="{{ request.receiver.username }}">
+                                {% endif %}
+                            </div>
+                            <div class="request-details">
+                                <a href="{% url 'view_profile_with_username' request.receiver.username %}" class="request-name">{{ request.receiver.username }}</a>
+                                <div class="request-date">Отправлен {{ request.created_at|date:"d.m.Y" }}</div>
+                            </div>
+                        </div>
+                        <div class="request-actions">
+                            <form action="{% url 'cancel_friend_request' request.id %}" method="post" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="button cancel-button">Отменить</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

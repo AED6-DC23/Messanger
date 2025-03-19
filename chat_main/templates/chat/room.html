@@ -1,0 +1,852 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}Чат: {{ room_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .room-container {
+        display: flex;
+        gap: 20px;
+    }
+    
+    .room-sidebar {
+        width: 280px;
+        flex-shrink: 0;
+    }
+    
+    .room-info-section, .room-participants-section {
+        background-color: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .room-info-section h3, .room-participants-section h3 {
+        margin-top: 0;
+        border-bottom: 2px solid #2196F3;
+        padding-bottom: 5px;
+    }
+    
+    .room-description {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    
+    .room-meta {
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    
+    .room-meta p {
+        margin: 5px 0;
+    }
+    
+    .compact-participants-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .participant-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .participant-item:last-child {
+        border-bottom: none;
+    }
+    
+    .participant-info {
+        display: flex;
+        align-items: center;
+    }
+    
+    .participant-avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        overflow: hidden;
+        margin-right: 10px;
+    }
+    
+    .participant-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .creator-badge {
+        background-color: #FFC107;
+        color: #000;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 10px;
+        margin-left: 5px;
+    }
+    
+    .chat-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .chat-container h2 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 20px;
+    }
+    
+    #chat-log {
+        flex-grow: 1;
+        overflow-y: auto;
+        background-color: #f5f5f5;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        min-height: 350px;
+        max-height: 450px;
+    }
+    
+    .message-input {
+        display: flex;
+        gap: 10px;
+    }
+    
+    @media (max-width: 768px) {
+        .room-container {
+            flex-direction: column;
+        }
+        
+        .room-sidebar {
+            width: 100%;
+        }
+    }
+    .chat-messages {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        scroll-behavior: smooth; /* Плавная прокрутка */
+        max-height: calc(100vh - 180px); /* Регулируйте высоту в зависимости от дизайна */
+    }
+    
+    /* Убедитесь, что родительский элемент также настроен для скроллинга */
+    .chat-body {
+        flex: 1;
+        overflow-y: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Общие стили контейнера чата */
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 60px);
+        background-color: #f5f5f5;
+    }
+    
+    /* Заголовок чата */
+    .chat-header {
+        padding: 15px;
+        background-color: #fff;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* Статус соединения */
+    .connection-status {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin: 8px auto;
+        text-align: center;
+        max-width: 80%;
+    }
+    
+    .connected {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .disconnected {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .connecting {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    /* Основная область чата */
+    .chat-body {
+        flex: 1;
+        overflow-y: hidden;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+    }
+    
+    /* Список сообщений */
+    .chat-messages {
+        list-style: none;
+        padding: 10px;
+        margin: 0;
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        scroll-behavior: smooth;
+    }
+    
+    /* Общие стили для сообщений */
+    .message {
+        display: flex;
+        margin-bottom: 15px;
+        position: relative;
+        max-width: 80%;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Входящие сообщения (слева) */
+    .incoming {
+        align-self: flex-start;
+    }
+    
+    /* Исходящие сообщения (справа) */
+    .outgoing {
+        align-self: flex-end;
+    }
+    
+    /* Контейнер содержимого сообщения */
+    .message-content {
+        padding: 10px 15px;
+        border-radius: 18px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    /* Стили для входящих сообщений */
+    .incoming .message-content {
+        background-color: #fff;
+        border-bottom-left-radius: 5px;
+        margin-right: 40px;
+    }
+    
+    /* Стили для исходящих сообщений */
+    .outgoing .message-content {
+        background-color: #e3f2fd;
+        border-bottom-right-radius: 5px;
+        margin-left: 40px;
+    }
+    
+    /* Заголовок сообщения с именем и временем */
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+    }
+    
+    /* Имя отправителя */
+    .message-username {
+        font-weight: bold;
+        color: #4a76a8;
+        margin-right: 10px;
+    }
+    
+    /* Время отправки */
+    .message-time {
+        color: #999;
+        font-size: 0.7rem;
+    }
+    
+    /* Текст сообщения */
+    .message-text {
+        word-break: break-word;
+        line-height: 1.4;
+    }
+    
+    /* Системные уведомления */
+    .notification {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #888;
+        margin: 10px 0;
+        padding: 5px 10px;
+        background-color: rgba(0,0,0,0.03);
+        border-radius: 15px;
+        align-self: center;
+    }
+    
+    /* Индикатор, что пользователь печатает */
+    .typing-notification {
+        font-size: 0.8rem;
+        color: #666;
+        height: 20px;
+        margin-bottom: 5px;
+        visibility: hidden;
+        font-style: italic;
+        padding-left: 15px;
+        float: right;
+        align-items: end;
+    }
+    
+
+    
+    /* Статус прочтения сообщения */
+    .message-status {
+        position: absolute;
+        bottom: -16px;
+        right: 5px;
+        font-size: 0.7rem;
+        color: #999;
+    }
+    
+    .outgoing .message-content .message-status {
+        color: #4caf50;
+    }
+    
+    /* Форма отправки сообщения */
+    .chat-footer {
+        padding: 15px;
+        background-color: #fff;
+        border-top: 1px solid #ddd;
+    }
+    
+    .message-form {
+        display: flex;
+        align-items: center;
+    }
+    
+    .message-input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        outline: none;
+        font-size: 0.95rem;
+    }
+    
+    .send-button {
+        margin-left: 10px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #4a76a8;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s;
+    }
+    
+    .send-button:hover {
+        background-color: #3a5a78;
+    }
+    
+    /* Аватары пользователей */
+    .message-avatar {
+        display: flex;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background-color: #ddd;
+        margin-right: 8px;
+        overflow: hidden;
+        align-items: center;
+    }
+    
+    .message-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .incoming .message-avatar {
+        order: -1;
+    }
+    
+    .outgoing .message-avatar {
+        order: 1;
+        margin-right: 0;
+        margin-left: 8px;
+    }
+    .qqq {
+        display: flex;
+        position: relative;
+        justify-content: center;
+    }
+    .typing-indicator {
+        padding: 8px 15px;
+        background-color: rgba(255, 255, 255, 0.8);
+        border-radius: 18px;
+        align-self: flex-start;
+        font-size: 13px;
+        color: #777;
+        margin-bottom: 5px;
+        display: none;
+        position: absolute;
+        left: 90px;
+        width: 120px;
+        top: -5px;
+    }
+
+    .typing-indicator.visible {
+        display: block;
+        animation: pulse 1.5s infinite;
+    }
+
+</style>
+<div class="room-container">
+    <div class="room-sidebar">
+        <div class="room-info-section">
+            <h3>{{ room.name }}</h3>
+            {% if room.description %}
+                <p class="room-description">{{ room.description }}</p>
+            {% endif %}
+            
+            <div class="room-meta">
+                <p><strong>Создатель:</strong> {{ room.creator.username }}</p>
+                <p><strong>Участников:</strong> {{ room.participants.count }}</p>
+            </div>
+            
+            <div class="room-actions">
+                <a href="{% url 'room_details' room.id %}" class="button button-secondary">Управление комнатой</a>
+            </div>
+        </div>
+        
+        <div class="room-participants-section">
+            <h3>Участники</h3>
+            <ul class="compact-participants-list">
+                <li class="participant-item">
+                    <div class="participant-info">
+                        <div class="participant-avatar">
+                            {% if room.creator.profile.avatar %}
+                                <img src="{{ room.creator.profile.avatar.url }}" alt="{{ room.creator.username }}">
+                            {% else %}
+                                <img src="/static/chat/default_avatar.png" alt="{{ room.creator.username }}">
+                            {% endif %}
+                        </div>
+                        <div class="participant-details">
+                            <span class="participant-name">{{ room.creator.username }}</span>
+                            <span class="creator-badge">Создатель</span>
+                        </div>
+                    </div>
+                </li>
+                
+                {% for participant in room.participants.all %}
+                    {% if participant != room.creator %}
+                        <li class="participant-item">
+                            <div class="participant-info">
+                                <div class="participant-avatar">
+                                    {% if participant.profile.avatar %}
+                                        <img src="{{ participant.profile.avatar.url }}" alt="{{ participant.username }}">
+                                    {% else %}
+                                        <img src="/static/chat/default_avatar.png" alt="{{ participant.username }}">
+                                    {% endif %}
+                                </div>
+                                <div class="participant-details">
+                                    <span class="participant-name">{{ participant.username }}</span>
+                                </div>
+                            </div>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="chat-container">
+        <div class="qqq">
+            <h2>{{ room.name }}</h2>
+            <div id="typing-indicator" class="typing-indicator">{{ other_user.username }} печатает...</div>
+        </div>
+        
+        <div id="connectionStatus" class="connection-status connecting" style="margin-top: 10px; color: orange;">Соединение устанавливается...</div>
+        
+            <div class="chat-body" id="chat-body">
+                <ul id="messagesList" class="chat-messages">
+                    <!-- Сообщения будут добавлены здесь -->
+                </ul>
+            </div>
+        
+        
+       
+        <div class="chat-footer">
+            
+            <form id="messageForm" class="message-form" style="display: flex; margin-bottom: 16px;">
+                <div id="typingNotification" class="typing-notification"></div>
+                <input type="text" id="messageInput" class="message-input" placeholder="Введите сообщение..." autocomplete="off">
+                <button type="submit" class="send-button">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+<script>
+    const roomName = "{{ room.slug }}";
+    const userId = "{{ request.user.id }}";
+    const username = "{{ request.user.username }}";
+    const typingIndicator = document.getElementById('typing-indicator');
+    // Создаем WebSocket соединение
+    let chatSocket = null;
+    let reconnectAttempts = 0;
+    let isConnected = false;
+    let typingTimeout = null;
+    let lastTypingStatus = false;
+    
+    function scrollToBottom() {
+    const messagesList = document.getElementById('messagesList');
+    if (messagesList) {
+        messagesList.scrollTop = messagesList.scrollHeight;
+        console.log("Прокрутка к последнему сообщению выполнена");
+        }
+    }
+
+    function loadMessageHistory() {
+    try {
+        const messagesHistory = JSON.parse('{{ messages_json|escapejs }}');
+        console.log(`Загружено ${messagesHistory.length} сообщений из истории`);
+        
+        // Очищаем существующие сообщения перед добавлением истории
+        const messagesList = document.getElementById('messagesList');
+        if (messagesList) {
+            messagesList.innerHTML = '';  // Очищаем список перед добавлением истории
+            
+            // Добавляем сообщения из истории
+            for (const msg of messagesHistory) {
+                addChatMessage(msg.content, msg.username, msg.user_id, msg.timestamp, msg.id);
+            }
+            
+            // Гарантированная прокрутка к последнему сообщению
+            scrollToBottom();
+            
+            // Дополнительная прокрутка с небольшой задержкой для надежности 
+            // (чтобы гарантировать завершение рендеринга)
+            setTimeout(scrollToBottom, 100);
+        }
+    } catch (e) {
+        console.error("Ошибка при загрузке истории сообщений:", e);
+        addNotification("Не удалось загрузить историю сообщений.");
+    }
+}
+
+    function connectWebSocket() {
+        // Закрываем предыдущее соединение, если оно существует
+        if (chatSocket) {
+            console.log("Закрытие предыдущего соединения");
+            chatSocket.close();
+        }
+        
+        const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsUrl = `${wsScheme}${window.location.host}/ws/chat/${roomName}/`;
+        
+        console.log(`Попытка подключения к WebSocket: ${wsUrl}`);
+        console.log(`Room slug: ${roomName}`);
+        
+        // Обновляем индикатор статуса
+        const statusEl = document.getElementById('connectionStatus');
+        if (statusEl) {
+            statusEl.innerHTML = `Подключение к ${wsUrl}`;
+            statusEl.className = 'connection-status connecting';
+        }
+        
+        // Создаем новое соединение
+        chatSocket = new WebSocket(wsUrl);
+        
+        chatSocket.onopen = function(e) {
+            console.log("WebSocket соединение установлено успешно!");
+            isConnected = true;
+            reconnectAttempts = 0;
+            
+            if (statusEl) {
+                statusEl.innerHTML = 'Подключено';
+                statusEl.className = 'connection-status connected';
+            }
+            
+            // Отправляем тестовое сообщение для проверки соединения
+            chatSocket.send(JSON.stringify({
+                'type': 'ping',
+                'message': 'Проверка соединения'
+            }));
+            
+            // Запускаем периодическую отправку ping
+            startPingSender();
+        };
+        
+        chatSocket.onmessage = function(e) {
+            console.log("Получено сообщение:", e.data);
+    
+    try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'typing') {
+                            // Показываем индикатор печатания и скрываем через 3 секунды
+                            typingIndicator.classList.add('visible');
+                            clearTimeout(typingTimeout);
+                            typingTimeout = setTimeout(() => {
+                            typingIndicator.classList.remove('visible');
+                            }, 3000);
+                            return;
+                        }
+        if (data.type === 'message') {
+            // Обработка нового сообщения
+            addChatMessage(data.message, data.username, data.user_id, data.timestamp, data.message_id);
+            
+            // Если это не наше сообщение, отправляем подтверждение о прочтении
+            if (parseInt(data.user_id) !== userId) {
+                chatSocket.send(JSON.stringify({
+                    'type': 'read_receipt',
+                    'message_id': data.message_id
+                }));
+            }
+        } else if (data.type === 'read_receipt') {
+            // Обработка подтверждения прочтения
+            updateMessageReadStatus(data.message_id, true);
+        } else if (data.type === 'typing') {
+            // Обработка индикатора набора текста
+            updateTypingStatus(data.username, data.user_id, data.is_typing);
+        } else if (data.type === 'notification') {
+            // Обработка уведомлений
+            addNotification(data.message);
+        } else if (data.type === 'pong') {
+            // Получен ответ на ping
+            console.log("Получен pong от сервера");
+        }
+    } catch (error) {
+        console.error("Ошибка при обработке сообщения:", error);
+    }
+};
+
+        
+        chatSocket.onclose = function(e) {
+            console.log("WebSocket соединение закрыто", e);
+            isConnected = false;
+            
+            if (statusEl) {
+                statusEl.innerHTML = `Отключено (код: ${e.code})`;
+                statusEl.className = 'connection-status disconnected';
+            }
+            
+            // Попытка переподключения
+            if (reconnectAttempts < 5) {
+                reconnectAttempts++;
+                const delay = Math.min(1000 * reconnectAttempts, 5000);
+                console.log(`Попытка переподключения через ${delay}мс (попытка ${reconnectAttempts})`);
+                
+                setTimeout(connectWebSocket, delay);
+            } else {
+                console.log("Превышено максимальное число попыток переподключения");
+                addNotification("Соединение потеряно. Обновите страницу для переподключения.");
+            }
+        };
+        
+        chatSocket.onerror = function(e) {
+            console.error("WebSocket ошибка:", e);
+            if (statusEl) {
+                statusEl.innerHTML = 'Ошибка соединения';
+                statusEl.className = 'connection-status disconnected';
+            }
+            addNotification("Ошибка соединения с сервером.");
+        };
+    }
+    
+
+    
+    function addChatMessage(message, userName, senderId, timestamp, messageId) {
+    console.log("Добавление сообщения:", message);
+    
+    const messagesList = document.getElementById('messagesList');
+    
+    if (!messagesList) {
+        console.error("Элемент messagesList не найден на странице!");
+        return;
+    }
+    
+    const date = new Date(timestamp);
+    const formattedTime = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    const isOutgoing = parseInt(senderId) === userId;
+    typingIndicator.classList.remove('visible');
+    const messageElement = document.createElement('li');
+    messageElement.className = `message ${isOutgoing ? 'outgoing' : 'incoming'}`;
+    messageElement.setAttribute('data-message-id', messageId);
+      
+    // Добавляем индикатор прочтения только для исходящих сообщений
+    const readStatusHtml = isOutgoing ? 
+        '<div class="message-status">✓</div>' : 
+        '';
+    
+    messageElement.innerHTML = `
+
+        <div class="message-content">
+            <div class="message-header">
+                <span class="message-username">${userName}</span>
+                <span class="message-time">${formattedTime}</span>
+            </div>
+            <div class="message-text">${message}</div>
+            ${readStatusHtml}
+        </div>
+    `;
+    
+    messagesList.appendChild(messageElement);
+    
+    // Прокрутка к последнему сообщению
+    scrollToBottom();
+}
+    
+    function addNotification(message) {
+        const messagesList = document.getElementById('messagesList');
+        
+        if (!messagesList) {
+            console.error("Элемент messagesList не найден на странице!");
+            return;
+        }
+        
+
+    }
+    scrollToBottom();
+
+    function updateMessageReadStatus(messageId, isRead) {
+    const messageElement = document.querySelector(`.message[data-message-id="${messageId}"]`);
+    if (messageElement && messageElement.classList.contains('outgoing')) {
+        const statusElement = messageElement.querySelector('.message-status');
+        if (statusElement) {
+            statusElement.textContent = isRead ? '✓✓' : '✓';
+            statusElement.style.color = isRead ? '#4caf50' : '#999';
+        }
+    }
+}
+
+    function updateTypingStatus(userName, senderId, isTyping) {
+        // Игнорируем собственный статус печатания
+        if (parseInt(senderId) === userId) return;
+        
+        const typingNotification = document.getElementById('typing-indicator');
+        
+        if (!typingNotification) {
+            console.error("Элемент typingNotification не найден на странице!");
+            return;
+        }
+        
+        if (isTyping) {
+            typingNotification.textContent = `${userName} печатает...`;
+            typingNotification.classList.add('visible');
+        } else {
+            typingNotification.textContent = '';
+            typingNotification.classList.remove('visible');
+        }
+    }
+    
+    // Отправка сообщения
+    function sendMessage(message) {
+        if (!isConnected || !message.trim()) {
+            console.error("Невозможно отправить сообщение: соединение закрыто или сообщение пустое");
+            return false;
+        }
+        
+        try {
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            return true;
+        } catch (e) {
+            console.error("Ошибка при отправке сообщения:", e);
+            return false;
+        }
+    }
+
+
+    
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Страница загружена, инициализация чата");
+        
+        // Подключение WebSocket
+        connectWebSocket();
+                // Загрузка истории сообщений
+                try {
+            const messagesHistory = JSON.parse('{{ messages_json|escapejs }}');
+            console.log(`Загружено ${messagesHistory.length} сообщений из истории`);
+            
+            // Очищаем существующие сообщения перед добавлением истории
+            const messagesList = document.getElementById('messagesList');
+            if (messagesList) {
+                messagesList.innerHTML = '';  // Очищаем список перед добавлением истории
+                
+                // Добавляем сообщения из истории
+                for (const msg of messagesHistory) {
+                    addChatMessage(msg.content, msg.username, msg.user_id, msg.timestamp, msg.id);
+                }
+                
+                // Прокрутка к последнему сообщению
+                messagesList.scrollBottom = messagesList.scrollHeight;
+            }
+        } catch (e) {
+            console.error("Ошибка при загрузке истории сообщений:", e);
+            addNotification("Не удалось загрузить историю сообщений.");
+        }
+        // Обработчик формы отправки сообщения
+        const messageForm = document.getElementById('messageForm');
+        const messageInput = document.getElementById('messageInput');
+        
+        if (messageForm && messageInput) {
+            messageForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const message = messageInput.value.trim();
+                if (message && sendMessage(message)) {
+                    // Очищаем поле ввода только если сообщение успешно отправлено
+                    messageInput.value = '';
+                    
+                    // Сбрасываем статус печатания
+                    if (typingTimeout) {
+                        clearTimeout(typingTimeout);
+                        typingTimeout = null;
+                    }
+                    
+                    if (lastTypingStatus) {
+                        lastTypingStatus = false;
+                        try {
+                            chatSocket.send(JSON.stringify({
+                                'type': 'typing',
+                                'is_typing': false
+                            }));
+                        } catch (e) {
+                            console.error("Ошибка при отправке статуса печатания:", e);
+                        }
+                    }
+                }
+            });
+            
+            // Автофокус на поле ввода
+            messageInput.focus();
+        } else {
+            console.error("Форма отправки сообщений не найдена на странице");
+        }
+    });
+</script>
+{% endblock %}

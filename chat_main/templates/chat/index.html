@@ -1,0 +1,303 @@
+{% extends 'chat/base.html' %}
+{% load static %}
+
+{% block title %}Чат{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="sidebar">
+        <div class="user-info" style="margin-bottom: 25px; display: flex; justify-content: center;">
+            <div class="user-avatar">
+                {% if user.profile.avatar %}
+                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}">
+                {% else %}
+                    <img src="{% static 'chat/img/default_avatar.png' %}" alt="{{ user.username }}">
+                {% endif %}
+            </div>
+            <div class="user-details">
+                <h3>{{ user.username }}</h3>
+                
+            </div>
+            <div class="user-menu">
+                <a href="{% url 'view_profile' %}" title="Профиль">
+                    <i class="fas fa-user-cog"></i>
+                </a>
+                <a href="{% url 'logout' %}" title="Выйти">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Активные диалоги -->
+        <div class="sidebar-section">
+            <h3>Активные диалоги</h3>
+            {% if dialogs %}
+                <ul class="dialog-list">
+                    {% for dialog in dialogs %}
+                        <li class="dialog-item {% if dialog.unread_count > 0 %}unread{% endif %}">
+                            {% if dialog.type == 'direct' and dialog.user %}
+                                <!-- Проверяем, что dialog.user и dialog.user.id существуют -->
+                                {% if dialog.user.id %}
+                                    <a href="{% url 'direct_messages' dialog.user.id %}">
+                                        <div class="dialog-avatar">
+                                            {% if dialog.user.profile.avatar %}
+                                                <img src="{{ dialog.user.profile.avatar.url }}" alt="{{ dialog.user.username }}">
+                                            {% else %}
+                                                <img src="{% static 'chat/img/default_avatar.png' %}" alt="{{ dialog.user.username }}">
+                                            {% endif %}
+                                        </div>
+                                        <div class="dialog-content">
+                                            <div class="dialog-header">
+                                                <span class="dialog-username">{{ dialog.user.username }}</span>
+                                                {% if dialog.unread_count > 0 %}
+                                                    <span class="unread-badge">{{ dialog.unread_count }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="dialog-message">
+                                                {% if dialog.last_message %}
+                                                    {{ dialog.last_message.content|truncatechars:30 }}
+                                                {% else %}
+                                                    Нет сообщений
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </a>
+                                {% else %}
+                                    <div class="dialog-content">
+                                        <div class="dialog-header">
+                                            <span class="dialog-username">Неизвестный пользователь</span>
+                                        </div>
+                                        <div class="dialog-message">
+                                            Ошибка загрузки диалога
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% elif dialog.type == 'group' and dialog.room %}
+                                <!-- Групповой чат -->
+                                <a href="{% url 'room' dialog.room.slug %}">
+                                    <div class="dialog-avatar group-avatar">
+                                        <i class="group-icon">👥</i>
+                                    </div>
+                                    <div class="dialog-content">
+                                        <div class="dialog-header">
+                                            <span class="dialog-roomname">{{ dialog.room.name }}</span>
+                                            {% if dialog.unread_count > 0 %}
+                                                <span class="unread-badge">{{ dialog.unread_count }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="dialog-message">
+                                            {% if dialog.last_message %}
+                                                <span class="message-sender">{{ dialog.last_message.user.username }}:</span> 
+                                                {{ dialog.last_message.content|truncatechars:20 }}
+                                            {% else %}
+                                                Нет сообщений
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="no-items-message">У вас пока нет активных диалогов.</p>
+               
+            {% endif %}
+        </div>
+
+        <!-- Список друзей -->
+        <div class="sidebar-section">
+            <h3>Друзья</h3>
+            {% if friends %}
+                <ul class="friend-list">
+                    {% for friend in friends %}
+                        <li class="friend-item">
+                            <div class="friend-avatar">
+                                {% if friend.profile.avatar %}
+                                    <img src="{{ friend.profile.avatar.url }}" alt="{{ friend.username }}">
+                                {% else %}
+                                    <img src="{% static 'chat/img/default_avatar.png' %}" alt="{{ friend.username }}">
+                                {% endif %}
+                                <span class="status-indicator {% if friend.profile.is_online %}online{% else %}offline{% endif %}"></span>
+                            </div>
+                            <div class="friend-info">
+                                <span class="friend-username">{{ friend.username }}</span>
+                                
+                            </div>
+                            <div class="friend-actions">
+                                <a href="{% url 'direct_messages' friend.id %}" class="button message-button">
+                                    Написать
+                                </a>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="no-items-message">У вас пока нет друзей.</p>
+                <a href="{% url 'search_users' %}" class="button button-secondary">Поиск пользователей</a>
+            {% endif %}
+        </div>
+
+        <!-- Запросы в друзья -->
+        {% if friend_requests %}
+            <div class="sidebar-section">
+                <h3>Запросы в друзья</h3>
+                <ul class="friend-requests-list">
+                    {% for request in friend_requests %}
+                        <li class="friend-request-item" style="list-style: none; display: flex; justify-content: center; text-align: center;">
+                            <div class="request-avatar">
+                                {% if request.sender.profile.avatar %}
+                                    <img src="{{ request.sender.profile.avatar.url }}" alt="{{ request.sender.username }}">
+                                {% else %}
+                                    <img src="{% static 'chat/img/default_avatar.png' %}" alt="{{ request.sender.username }}">
+                                {% endif %}
+                            </div>
+                            <div class="request-info">
+                                <span class="request-username">{{ request.sender.username }}</span>
+                                <span class="request-date">{{ request.created_at|date:"d.m.Y" }}</span>
+                            </div>
+                            <div class="request-actions" style="align-items: center; margin-left: 20px;">
+                                <form method="post" action="{% url 'accept_friend' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="friendship_id" value="{{ request.id }}">
+                                    <button type="submit" class="action-button accept-button" title="Принять">
+                                        <i class="fas fa-check" style="color: white;"></i>
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'reject_friend' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="friendship_id" value="{{ request.id }}">
+                                    <button type="submit" class="action-button reject-button" title="Отклонить">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <!-- Приглашения в комнаты -->
+        {% if room_invitations %}
+        <div class="sidebar-section">
+            <h3>Приглашения в комнаты</h3>
+            <ul class="room-invitations-list">
+                {% for invitation in room_invitations %}
+                    <li class="room-invitation-item">
+                        <div class="invitation-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="invitation-info">
+                            <span class="invitation-room-name">{{ invitation.room.name }}</span>
+                            <span class="invitation-from">
+                                от {% if invitation.sent_by %}{{ invitation.sent_by.username }}{% else %}неизвестного пользователя{% endif %}
+                            </span>
+                            <span class="invitation-date">{{ invitation.created_at|date:"d.m.Y" }}</span>
+                        </div>
+                        <div class="invitation-actions">
+                            <form method="post" action="{% url 'accept_room_invitation' invitation.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="action-button accept-button" title="Принять">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'reject_room_invitation' invitation.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="action-button reject-button" title="Отклонить">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+    </div>
+
+    <div class="main-content">
+        <div class="welcome-box">
+            <h2>Добро пожаловать в чат, {{ user.username }}!</h2>
+            <p>Выберите диалог из списка слева или создайте новую комнату для общения.</p>
+            
+            <!-- Форма создания комнаты -->
+            <div class="create-room-box">
+                <h3>Создать новую комнату</h3>
+                <form method="post" action="{% url 'index' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="create_room" value="1">
+                    
+                    <div class="form-group">
+                        <label for="{{ room_form.name.id_for_label }}">Название комнаты:</label>
+                        {{ room_form.name }}
+                        {% if room_form.name.errors %}
+                            <div class="form-errors">{{ room_form.name.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group" id="description">
+                        <label for="{{ room_form.description.id_for_label }}">Описание (необязательно):</label>
+                        {{ room_form.description }}
+                        {% if room_form.description.errors %}
+                            <div class="form-errors">{{ room_form.description.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <label>Приватная комната (только для приглашенных)
+                            {{ room_form.is_private }}
+                            
+                        </label>
+                        {% if room_form.is_private.errors %}
+                            <div class="form-errors">{{ room_form.is_private.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="button button-primary">Создать комнату</button>
+                </form>
+            </div>
+            
+            <!-- Сообщения об успехе или ошибках -->
+            {% if messages %}
+                <div class="message-container">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'chat/js/chat.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Обработка клика по активным диалогам
+        const dialogItems = document.querySelectorAll('.dialog-item a');
+        dialogItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                // Удаляем класс 'unread' при клике на диалог
+                const parent = this.closest('.dialog-item');
+                if (parent) {
+                    parent.classList.remove('unread');
+                }
+            });
+        });
+        
+        // Автофокус на поле ввода названия комнаты
+        const roomNameInput = document.getElementById('{{ room_form.name.id_for_label }}');
+        if (roomNameInput) {
+            roomNameInput.focus();
+        }
+    });
+</script>
+{% endblock %}

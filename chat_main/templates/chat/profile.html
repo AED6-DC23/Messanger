@@ -1,0 +1,45 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}Профиль {{ profile_user.username }}{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-sidebar">
+        {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="Аватар" class="profile-avatar">
+        {% else %}
+            <img src="/static/chat/default_avatar.png" alt="Аватар по умолчанию" class="profile-avatar">
+        {% endif %}
+        
+        <div class="profile-username">{{ profile_user.username }}</div>
+        
+        {% if is_own_profile %}
+            <a href="{% url 'edit_profile' %}" class="button button-secondary">Редактировать профиль</a>
+        {% endif %}
+    </div>
+    
+    <div class="profile-content">
+        <div class="profile-info">
+            <h3>Информация о пользователе</h3>
+            {% if profile_user.first_name or profile_user.last_name %}
+                <p><strong>Имя:</strong> {{ profile_user.first_name }} {{ profile_user.last_name }}</p>
+            {% endif %}
+            
+            <p><strong>Email:</strong> {{ profile_user.email }}</p>
+            
+            {% if profile.birth_date %}
+                <p><strong>Дата рождения:</strong> {{ profile.birth_date }}</p>
+            {% endif %}
+            
+            <p><strong>Последний вход:</strong> {{ profile.last_seen|date:"d.m.Y H:i" }}</p>
+            
+            {% if profile.bio %}
+                <h3>О себе</h3>
+                <p>{{ profile.bio }}</p>
+            {% endif %}
+        </div>
+        
+
+    </div>
+</div>
+{% endblock %}
